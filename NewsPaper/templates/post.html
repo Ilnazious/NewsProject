@@ -1,0 +1,15 @@
+{% extends 'flatpages/default.html' %}
+
+{% load custom_tags %}
+
+{% block title %}
+Post
+{% endblock title %}
+
+{% block content %}
+<h3>Сегодняшняя дата {% current_time '%b %d %Y' %}</h3>
+<h1>
+    {{ post }}
+</h1>
+<h3>Дата публикации {{ post.dataCreation|date:"d.m.y" }}</h3>
+{% endblock content %}
