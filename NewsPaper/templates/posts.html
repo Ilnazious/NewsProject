@@ -9,18 +9,24 @@ Posts
 
 {% block content %}
     <h1>Все новости</h1>
+    <form action="" method="get">
+        {{ filterset.form.as_p }}
+        <input type="submit" value="Найти" />
+    </form>
     <h3>Сегодняшняя дата {% current_time '%d %B %Y %a' %}</h3>
-    <h3>Всего новостей: {{ all_posts|length }}</h3>
+    <h3>Всего публикаций: {{ all_posts|length }}</h3>
     <hr>
     {% if posts %}
         <table>
             <tr>
+                <td>№</td>
                 <td>Название</td>
                 <td>Дата публикации</td>
                 <td>Содержание</td>
             </tr>
             {% for post in posts %}
             <tr>
+                <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
                 <td>{{ post.title|censor }}</td>
                 <td>{{ post.dataCreation|date:"d.m.y" }}</td>
                 <td>{{ post.text|truncatechars:20|censor }}</td>
@@ -28,6 +34,27 @@ Posts
             {% endfor %}
         </table>
     {% else %}
-        <h2>Товаров нет!</h2>
+        <h2>Публикаций нет!</h2>
     {% endif %}
+
+   {# Информация о предыдущих страницах #}
+   {% if page_obj.has_previous %}
+       <a href="?{% url_replace page=1 %}">1</a>
+       {% if page_obj.previous_page_number != 1 %}
+           ...
+           <a href="?page={{ page_obj.previous_page_number }}">{{ page_obj.previous_page_number }}</a>
+       {% endif %}
+   {% endif %}
+
+   {# Информация о текущей странице #}
+   {{ page_obj.number }}
+
+   {# Информация о следующих страницах #}
+   {% if page_obj.has_next %}
+       <a href="?page={{ page_obj.next_page_number }}">{{ page_obj.next_page_number }}</a>
+       {% if paginator.num_pages != page_obj.next_page_number %}
+           ...
+           <a href="?page={{ page_obj.paginator.num_pages }}">{{ page_obj.paginator.num_pages }}</a>
+       {% endif %}
+   {% endif %}
 {% endblock content %}

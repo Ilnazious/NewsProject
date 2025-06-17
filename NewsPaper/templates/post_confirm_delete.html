@@ -1,0 +1,23 @@
+{% extends 'flatpages/default.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Подтверждение удаления</h2>
+
+    <div class="alert alert-warning">
+        <p>Вы уверены, что хотите удалить
+            {% if object.categoryType == 'NW' %}новость{% else %}статью{% endif %}
+            <strong>"{{ object.title }}"</strong>?
+        </p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger">Да, удалить</button>
+            <a href="{% if object.categoryType == 'NW' %}{% url 'news_list' %}{% else %}{% url 'articles_list' %}{% endif %}"
+               class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

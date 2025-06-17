@@ -58,6 +58,10 @@ class Post(models.Model):
     def preview(self):
         return self.text[0:128] + '...'
 
+#Успешный url
+    def get_absolute_url(self):
+        return reverse('post_detail', args=[str(self.id)])
+
 class PostCategory(models.Model):
     postThrough = models.ForeignKey(Post, on_delete=models.CASCADE)
     categoryThrough = models.ForeignKey(Category, on_delete=models.CASCADE)
