@@ -1,5 +1,6 @@
 from django.urls import path
-from .views import PostsList, PostDetail, NewsCreateView, NewsUpdateView, NewsDeleteView, ArticleCreateView, ArticleUpdateView, ArticleDeleteView
+from .views import PostsList, PostDetail, NewsCreateView, NewsUpdateView, NewsDeleteView, ArticleCreateView, ArticleUpdateView, ArticleDeleteView, become_author
+from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('', PostsList.as_view(), name='news_list'),
@@ -13,4 +14,6 @@ urlpatterns = [
     path('articles/create/', ArticleCreateView.as_view(), name='article_create'),
     path('articles/<int:pk>/edit/', ArticleUpdateView.as_view(), name='article_edit'),
     path('articles/<int:pk>/delete/', ArticleDeleteView.as_view(), name='article_delete'),
+
+    path('become-author/', become_author, name='become_author'),
 ]

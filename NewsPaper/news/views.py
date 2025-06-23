@@ -1,11 +1,15 @@
+from django.contrib.auth.models import Group
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from django.utils.http import urlencode
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from .models import Post, Author
 from .filters import PostFilter
 from .forms import PostForm
+from django.shortcuts import redirect
+from django.contrib import messages
 
 class PostsList(ListView):
     model = Post
@@ -32,7 +36,8 @@ class PostDetail(DetailView):
 
 #Функции создания, обновления и удаления
 
-class NewsCreateView(LoginRequiredMixin, CreateView):
+class NewsCreateView(PermissionRequiredMixin, CreateView):
+    permission_required = ('news.add_post',)
     model = Post
     form_class = PostForm
     template_name = 'post_form.html'
@@ -49,7 +54,8 @@ class NewsCreateView(LoginRequiredMixin, CreateView):
         form.instance.categoryType = Post.NEWS
         return super().form_valid(form)
 
-class NewsUpdateView(LoginRequiredMixin, UpdateView):
+class NewsUpdateView(PermissionRequiredMixin, UpdateView):
+    permission_required = ('news.change_post',)
     model = Post
     form_class = PostForm
     template_name = 'post_form.html'
@@ -68,7 +74,8 @@ class NewsUpdateView(LoginRequiredMixin, UpdateView):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
-class NewsDeleteView(LoginRequiredMixin, DeleteView):
+class NewsDeleteView(PermissionRequiredMixin, DeleteView):
+    permission_required = ('news.delete_post',)
     model = Post
     template_name = 'post_confirm_delete.html'
 
@@ -86,7 +93,8 @@ class NewsDeleteView(LoginRequiredMixin, DeleteView):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
-class ArticleCreateView(LoginRequiredMixin, CreateView):
+class ArticleCreateView(PermissionRequiredMixin, CreateView):
+    permission_required = ('news.add_post',)
     model = Post
     form_class = PostForm
     template_name = 'post_form.html'
@@ -102,7 +110,8 @@ class ArticleCreateView(LoginRequiredMixin, CreateView):
         form.instance.categoryType = Post.ARTICLE
         return super().form_valid(form)
 
-class ArticleUpdateView(LoginRequiredMixin, UpdateView):
+class ArticleUpdateView(PermissionRequiredMixin, UpdateView):
+    permission_required = ('news.change_post',)
     model = Post
     form_class = PostForm
     template_name = 'post_form.html'
@@ -121,7 +130,8 @@ class ArticleUpdateView(LoginRequiredMixin, UpdateView):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
-class ArticleDeleteView(LoginRequiredMixin, DeleteView):
+class ArticleDeleteView(PermissionRequiredMixin, DeleteView):
+    permission_required = ('news.delete_post',)
     model = Post
     template_name = 'post_confirm_delete.html'
 
@@ -138,3 +148,9 @@ class ArticleDeleteView(LoginRequiredMixin, DeleteView):
         if obj.author.authorUser != request.user:
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
+
+@login_required
+def become_author(request):
+    authors_group = Group.objects.get(name='authors')
+    request.user.groups.add(authors_group)
+    return redirect('/accounts/email')
