@@ -1,10 +1,11 @@
 from django.db import models
-from django.contrib.auth.models import User
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User, Group
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 class Author(models.Model):
     authorUser = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -28,6 +29,7 @@ class Author(models.Model):
 
 class Category(models.Model):
     name = models.CharField(max_length=64, unique=True)
+    subscribers = models.ManyToManyField(User, related_name='subscribed_categories', blank=True)
 
     def __str__(self):
         return self.name.title()
@@ -63,7 +65,20 @@ class Post(models.Model):
 
 #Успешный url
     def get_absolute_url(self):
+        from django.urls import reverse
         return reverse('post_detail', args=[str(self.id)])
+
+    def clean(self):
+        if self.categoryType == self.NEWS:
+            today_posts = Post.objects.filter(
+                author__authorUser=self.author.authorUser,
+                categoryType=self.NEWS,
+                dataCreation__date=timezone.now().date()
+            ).count()
+
+            if today_posts >= 3:
+                raise ValidationError('Нельзя публиковать более трёх новостей в сутки')
+        super().clean()
 
 class PostCategory(models.Model):
     postThrough = models.ForeignKey(Post, on_delete=models.CASCADE)

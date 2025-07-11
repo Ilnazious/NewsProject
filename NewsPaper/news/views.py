@@ -5,11 +5,13 @@ from django.utils.http import urlencode
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from .models import Post, Author
+from .models import Post, Author, Category
 from .filters import PostFilter
 from .forms import PostForm
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib import messages
+from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 class PostsList(ListView):
     model = Post
@@ -27,6 +29,8 @@ class PostsList(ListView):
         context= super().get_context_data(**kwargs)
         context['all_posts'] = Post.objects.all()
         context['filterset'] = self.filterset
+        if self.request.user.is_authenticated:
+            context['subscribed_categories'] = self.request.user.subscribed_categories.all()
         return context
 
 class PostDetail(DetailView):
@@ -34,7 +38,36 @@ class PostDetail(DetailView):
     template_name = 'post.html'
     context_object_name = 'post'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.request.user.is_authenticated:
+            categories = self.object.postCategory.all()
+            if categories.exists():
+                context['is_subscribed'] = categories.first().subscribers.filter(
+                    id=self.request.user.id
+                ).exists()
+                context['category'] = categories.first()
+        return context
+
+class CategoryPostsView(ListView):
+    model = Post
+    template_name = 'category_posts.html'
+    context_object_name = 'posts'
+    paginate_by = 10
+
+    def get_queryset(self):
+        self.category = get_object_or_404(Category, id=self.kwargs['category_id'])
+        return Post.objects.filter(category=self.category).order_by('-dateCreation')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['category'] = self.category
+        if self.request.user.is_authenticated:
+            context['is_subscribed'] = self.category.subscribers.filter(id=self.request.user.id).exists()
+        return context
+
 #Функции создания, обновления и удаления
+
 
 class NewsCreateView(PermissionRequiredMixin, CreateView):
     permission_required = ('news.add_post',)
@@ -43,14 +76,20 @@ class NewsCreateView(PermissionRequiredMixin, CreateView):
     template_name = 'post_form.html'
 
     def get_success_url(self):
-        base_url = reverse_lazy('news_list')  # Используем новое имя URL
-        query_params = urlencode({'page': 1})
-        return f"{base_url}?{query_params}"
+        return reverse_lazy('news_list') + '?page=1'
 
     def form_valid(self, form):
-        # Получаем или создаем автора для пользователя
-        author, created = Author.objects.get_or_create(authorUser=self.request.user)
-        form.instance.author = author
+        today_news = Post.objects.filter(
+            author__authorUser=self.request.user,
+            categoryType=Post.NEWS,
+            dataCreation__date=timezone.now().date()
+        ).count()
+
+        if today_news >= 3:
+            form.add_error(None, 'Нельзя публиковать более 3 новостей в сутки')
+            return self.form_invalid(form)
+
+        form.instance.author = Author.objects.get_or_create(authorUser=self.request.user)[0]
         form.instance.categoryType = Post.NEWS
         return super().form_valid(form)
 
@@ -93,6 +132,7 @@ class NewsDeleteView(PermissionRequiredMixin, DeleteView):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
+
 class ArticleCreateView(PermissionRequiredMixin, CreateView):
     permission_required = ('news.add_post',)
     model = Post
@@ -105,6 +145,18 @@ class ArticleCreateView(PermissionRequiredMixin, CreateView):
         return f"{base_url}?{query_params}"
 
     def form_valid(self, form):
+        # Проверка ограничения (3 статьи в день)
+        today_articles = Post.objects.filter(
+            author__authorUser=self.request.user,
+            categoryType=Post.ARTICLE,
+            dataCreation__date=timezone.now().date()
+        ).count()
+
+        if today_articles >= 3:
+            form.add_error(None, 'Нельзя публиковать более 3 статей в сутки')
+            return self.form_invalid(form)
+
+        # Оригинальная логика
         author, created = Author.objects.get_or_create(authorUser=self.request.user)
         form.instance.author = author
         form.instance.categoryType = Post.ARTICLE
@@ -154,3 +206,12 @@ def become_author(request):
     authors_group = Group.objects.get(name='authors')
     request.user.groups.add(authors_group)
     return redirect('/accounts/email')
+
+@login_required
+def subscribe_category(request, category_id):
+    category = get_object_or_404(Category, id=category_id)
+    if request.user in category.subscribers.all():
+        category.subscribers.remove(request.user)
+    else:
+        category.subscribers.add(request.user)
+    return redirect('news_list')

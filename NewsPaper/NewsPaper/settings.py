@@ -40,14 +40,21 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'django.contrib.flatpages',
-    'news',
+
+    'news.apps.NewsConfig',
     'fpages',
     'django_filters',
+
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.yandex',
+
+    'django_apscheduler',
 ]
+
+DEFAULT_FROM_EMAIL = 'Irakhimzyanovmars@yandex.ru'
 
 SITE_ID = 1
 
@@ -171,5 +178,33 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-#Настройка email (для верификации)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.yandex.ru'
+EMAIL_PORT = 465
+EMAIL_HOST_USER = 'Irakhimzyanovmars@yandex.ru'
+EMAIL_HOST_PASSWORD = 'erkfnzrokojzyfiq'
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+EMAIL_USE_SSL = True
+
+SITE_URL = 'http://127.0.0.1:8000/news'
+
+APSCHEDULER_DATETIME_FORMAT = "N j, Y, f:s a"
+APSCHEDULER_RUN_NOW_TIMEOUT = 25
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'INFO',
+    },
+}
