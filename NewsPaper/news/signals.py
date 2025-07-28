@@ -6,6 +6,11 @@ from django.conf import settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from .models import Post
+from .tasks import notify_subscribers
+
 @receiver(m2m_changed, sender=Post.postCategory.through)
 def notify_subscribers_new_post(sender, instance, action, pk_set, **kwargs):
     if action == "post_add":
@@ -56,3 +61,8 @@ def send_welcome_email(sender, instance, created, **kwargs):
             recipient_list=[instance.email],
             fail_silently=False,
         )
+
+@receiver(m2m_changed, sender=Post.postCategory.through)
+def post_created(sender, instance, created, **kwargs):
+    if created:
+        notify_subscribers.delay(instance.id)

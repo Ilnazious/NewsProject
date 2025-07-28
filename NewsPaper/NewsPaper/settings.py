@@ -157,14 +157,14 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
+#Подтверждение почты
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 
-
-
+#Регистрация при помощи Google
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': [
@@ -178,6 +178,7 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
+#Настройки для отправки почты
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.yandex.ru'
 EMAIL_PORT = 465
@@ -189,9 +190,11 @@ EMAIL_USE_SSL = True
 SITE_URL = 'http://127.0.0.1:8000/news'
 SITE_NAME = 'Новостной портал'
 
+#apscheduler
 APSCHEDULER_DATETIME_FORMAT = "N j, Y, f:s a"
 APSCHEDULER_RUN_NOW_TIMEOUT = 25
 
+#Логирование
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -209,3 +212,10 @@ LOGGING = {
         'level': 'INFO',
     },
 }
+
+#Celery
+CELERY_BROKER_URL = 'redis://localhost:6379'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379'
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
