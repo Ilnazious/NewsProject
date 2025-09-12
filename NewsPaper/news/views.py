@@ -12,6 +12,7 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib import messages
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.core.cache import cache
 
 class PostsList(ListView):
     model = Post
@@ -37,6 +38,14 @@ class PostDetail(DetailView):
     model = Post
     template_name = 'post.html'
     context_object_name = 'post'
+
+    def get_object(self, *args, **kwargs):
+        obj = cache.get(f'product-{self.kwargs["pk"]}', None)
+        if not obj:
+            obj = super().get_object(queryset=self.queryset)
+            cache.set(f'product-{self.kwargs["pk"]}', obj)
+
+        return obj
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

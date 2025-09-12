@@ -47,9 +47,12 @@
                 <div class="text-muted">
                     <i class="bi bi-calendar"></i> {% current_time '%d %B %Y (%a)' %}
                 </div>
+                {% load cache %}
+                {% cache 300 post_count_counter %}  {# Кэшируем на 5 минут (300 секунд) #}
                 <div class="badge bg-primary rounded-pill">
                     Всего: {{ all_posts|length }}
                 </div>
+                {% endcache %}
             </div>
         </div>
     </div>

@@ -80,6 +80,10 @@ class Post(models.Model):
                 raise ValidationError('Нельзя публиковать более трёх новостей в сутки')
         super().clean()
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        cache.delete(f'product-{self.pk}')
+
 class PostCategory(models.Model):
     postThrough = models.ForeignKey(Post, on_delete=models.CASCADE)
     categoryThrough = models.ForeignKey(Category, on_delete=models.CASCADE)

@@ -198,18 +198,117 @@ APSCHEDULER_RUN_NOW_TIMEOUT = 25
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} {levelname} {message}',
+            'style': '{',
+        },
+        'verbose_with_path': {
+            'format': '{asctime} {levelname} {pathname} {message}',
+            'style': '{',
+        },
+        'verbose_with_exc_info': {
+            'format': '{asctime} {levelname} {pathname} {message}\n{exc_info}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{asctime} {levelname} {module} {message}',
+            'style': '{',
+        },
+        'email': {
+            'format': '{asctime} {levelname} {pathname} {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+    },
     'handlers': {
         'console': {
+            'level': 'DEBUG',
+            'filters': ['require_debug_true'],
             'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
         },
-        'file': {
+        'console_warning': {
+            'level': 'WARNING',
+            'filters': ['require_debug_true'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose_with_path',
+        },
+        'console_error': {
+            'level': 'ERROR',
+            'filters': ['require_debug_true'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose_with_exc_info',
+        },
+        'general_file': {
+            'level': 'INFO',
+            'filters': ['require_debug_false'],
             'class': 'logging.FileHandler',
-            'filename': 'debug.log',
+            'filename': 'general.log',
+            'formatter': 'simple',
+        },
+        'errors_file': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': 'errors.log',
+            'formatter': 'verbose_with_exc_info',
+        },
+        'security_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'security.log',
+            'formatter': 'simple',
+        },
+        'mail_admins': {
+            'level': 'ERROR',
+            'filters': ['require_debug_false'],
+            'class': 'django.utils.log.AdminEmailHandler',
+            'formatter': 'email',
+            'include_html': False,
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'console_warning', 'console_error', 'general_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['errors_file', 'mail_admins'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.server': {
+            'handlers': ['errors_file', 'mail_admins'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.template': {
+            'handlers': ['errors_file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.db.backends': {
+            'handlers': ['errors_file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['security_file'],
+            'level': 'INFO',
+            'propagate': False,
         },
     },
     'root': {
-        'handlers': ['console', 'file'],
-        'level': 'INFO',
+        'handlers': ['console', 'console_warning', 'console_error', 'general_file'],
+        'level': 'DEBUG',
     },
 }
 
@@ -219,3 +318,11 @@ CELERY_RESULT_BACKEND = 'redis://localhost:6379'
 CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+
+#Кэширование
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': os.path.join(BASE_DIR, 'cache_files'),
+    }
+}
