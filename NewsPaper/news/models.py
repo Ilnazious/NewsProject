@@ -6,6 +6,10 @@ from django.dispatch import receiver
 from django.contrib.auth.models import User, Group
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.core.cache import cache
+
+from django.utils.translation import gettext
+from django.utils.translation import gettext_lazy as _
 
 class Author(models.Model):
     authorUser = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -28,7 +32,7 @@ class Author(models.Model):
         self.save()
 
 class Category(models.Model):
-    name = models.CharField(max_length=64, unique=True)
+    name = models.CharField(max_length=64, unique=True, help_text= _('category name'))
     subscribers = models.ManyToManyField(User, related_name='subscribed_categories', blank=True)
 
     def __str__(self):
@@ -39,14 +43,14 @@ class Post(models.Model):
     ARTICLE = 'AR'
     NEWS = 'NW'
     CATEGORY_CHOICES= (
-        (NEWS, 'Новость'),
-        (ARTICLE, 'Статья'),
+        (NEWS, _('News')),
+        (ARTICLE, _('Article')),
     )
-    categoryType = models.CharField(max_length=2, choices=CATEGORY_CHOICES, default=ARTICLE)
+    categoryType = models.CharField(max_length=2, choices=CATEGORY_CHOICES, default=ARTICLE, verbose_name=_('Type'), help_text= _('post category'))
     dataCreation = models.DateTimeField(auto_now_add=True)
     postCategory = models.ManyToManyField(Category, through='PostCategory')
-    title = models.CharField(max_length=128)
-    text = models.TextField()
+    title = models.CharField(max_length=128, help_text= _('post title'))
+    text = models.TextField(help_text= _('post text'))
     rating = models.SmallIntegerField(default=0)
 
     def __str__(self):

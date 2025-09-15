@@ -10,9 +10,21 @@ from .filters import PostFilter
 from .forms import PostForm
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib import messages
-from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
+
+from django.utils import timezone
+import pytz
+
+from django.http import HttpResponse
+
+from django.views.decorators.http import require_POST
+
+from django.utils.translation import get_language
+from django.utils.translation import activate
+
+# from django.utils.translation import gettext as _
+# from django.utils.translation import activate, get_supported_language_variant, LANGUAGE_SESSION_KEY
 
 class PostsList(ListView):
     model = Post
@@ -23,6 +35,8 @@ class PostsList(ListView):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        current_language = get_language()
+        activate(current_language)
         self.filterset = PostFilter(self.request.GET, queryset)
         return self.filterset.qs
 
@@ -30,9 +44,36 @@ class PostsList(ListView):
         context= super().get_context_data(**kwargs)
         context['all_posts'] = Post.objects.all()
         context['filterset'] = self.filterset
+        context['timezones'] = [
+            'UTC',
+            'Europe/Moscow',
+            'Europe/London',
+            'Europe/Berlin',
+            'Europe/Paris',
+            'America/New_York',
+            'America/Los_Angeles',
+            'Asia/Tokyo',
+            'Asia/Shanghai',
+            'Asia/Kolkata',
+            'Australia/Sydney'
+        ]
+        tzname = self.request.session.get('django_timezone')
+        if tzname:
+            try:
+                pytz.timezone(tzname)
+                context['TIME_ZONE'] = tzname
+            except (pytz.UnknownTimeZoneError, ValueError):
+                context['TIME_ZONE'] = 'UTC'
+        else:
+            context['TIME_ZONE'] = 'UTC'
         if self.request.user.is_authenticated:
             context['subscribed_categories'] = self.request.user.subscribed_categories.all()
         return context
+
+    def get(self, request, *args, **kwargs):
+        self.object_list = self.get_queryset()
+        context = self.get_context_data()
+        return HttpResponse(render(request, self.template_name, context))
 
 class PostDetail(DetailView):
     model = Post
@@ -49,6 +90,7 @@ class PostDetail(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['current_language'] = get_language()
         if self.request.user.is_authenticated:
             categories = self.object.postCategory.all()
             if categories.exists():
@@ -57,6 +99,11 @@ class PostDetail(DetailView):
                 ).exists()
                 context['category'] = categories.first()
         return context
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        context = self.get_context_data(object=self.object)
+        return HttpResponse(render(request, self.template_name, context))
 
 class CategoryPostsView(ListView):
     model = Post
@@ -224,3 +271,16 @@ def subscribe_category(request, category_id):
     else:
         category.subscribers.add(request.user)
     return redirect('news_list')
+
+@require_POST
+def set_timezone(request):
+    if 'timezone' in request.POST:
+        tz = request.POST['timezone']
+        try:
+            pytz.timezone(tz)
+            request.session['django_timezone'] = tz
+            timezone.activate(tz)
+        except pytz.UnknownTimeZoneError:
+            request.session['django_timezone'] = 'UTC'
+            timezone.activate('UTC')
+    return redirect(request.POST.get('next', '/'))

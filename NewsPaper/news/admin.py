@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Category, Post
+from modeltranslation.admin import TranslationAdmin
 
 def delcategory(modeladmin, request, queryset):
     deleted_count, _ = queryset.delete()
@@ -12,6 +13,12 @@ class PostAdmin(admin.ModelAdmin):
     list_filter = ('title', 'dataCreation', 'categoryType')
     search_fields = ('title', 'title')
     actions = [delcategory]
+
+class CategoryAdmin(TranslationAdmin):
+    model = Category
+
+class PostAdmin(TranslationAdmin):
+    model = Post
 
 admin.site.register(Category)
 admin.site.register(Post, PostAdmin)

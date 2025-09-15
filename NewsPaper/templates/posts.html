@@ -1,29 +1,85 @@
 {% extends 'flatpages/default.html' %}
 {% load custom_tags %}
 {% load censor_filters %}
+{% load i18n %}
+{% load tz %}
 
 {% block title %}
-Все публикации
+{% trans "All publications" %}
 {% endblock title %}
 
 {% block content %}
+{% with current_tz=request.session.django_timezone|default:"UTC" %}
+
 <div class="container mt-4">
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h1 class="mb-0">Все публикации</h1>
-                {% if perms.news.add_post %}
+                <h1 class="mb-0">{% trans "All publications" %}</h1>
                 <div class="btn-group" role="group">
+                    <!-- Выбор языка -->
+                    <form action="{% url 'set_language' %}" method="post" class="d-inline me-2">
+                        {% csrf_token %}
+                        <input name="next" type="hidden" value="{{ request.get_full_path }}">
+                        {% get_current_language as LANGUAGE_CODE %}
+                        <select name="language" class="form-select form-select-sm" onchange="this.form.submit()">
+                            {% get_available_languages as LANGUAGES %}
+                            {% get_language_info_list for LANGUAGES as languages %}
+                            {% for language in languages %}
+                                <option value="{{ language.code }}" {% if language.code == LANGUAGE_CODE %}selected{% endif %}>
+                                    {{ language.name_local }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+
+                    <!-- Выбор часового пояса -->
+                    <form action="{% url 'set_timezone' %}" method="POST" class="d-inline me-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <select name="timezone" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="UTC"{% if current_tz == "UTC" %} selected{% endif %}>UTC</option>
+                            <option value="Europe/Moscow"{% if current_tz == "Europe/Moscow" %} selected{% endif %}>Moscow</option>
+                            <option value="Europe/London"{% if current_tz == "Europe/London" %} selected{% endif %}>London</option>
+                            <option value="America/New_York"{% if current_tz == "America/New_York" %} selected{% endif %}>New York</option>
+                            <option value="Asia/Tokyo"{% if current_tz == "Asia/Tokyo" %} selected{% endif %}>Tokyo</option>
+                        </select>
+                    </form>
+
+                    <!-- Кнопка принудительного обновления -->
+                    <a href="{% url 'news_list' %}" class="btn btn-outline-secondary btn-sm" title="{% trans 'Refresh page' %}">
+                        <i class="bi bi-arrow-clockwise"></i> {% trans "Refresh" %}
+                    </a>
+
+                    {% if perms.news.add_post %}
                     <a href="{% url 'news_create' %}" class="btn btn-primary">
-                        <i class="bi bi-plus-circle"></i> Создать новость
+                        <i class="bi bi-plus-circle"></i> {% trans "Create news" %}
                     </a>
                     <a href="{% url 'article_create' %}" class="btn btn-success">
-                        <i class="bi bi-plus-circle"></i> Создать статью
+                        <i class="bi bi-plus-circle"></i> {% trans "Create article" %}
                     </a>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
 
+            <!-- Информация о теме и времени -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="text-muted">
+                    <i class="bi bi-calendar"></i>
+                    {% timezone current_tz %}
+                        {% now "d F Y (D) H:i" %}
+                    {% endtimezone %}
+                    ({{ current_tz }})
+                </div>
+                {% load cache %}
+                {% cache 60 post_count_counter %}
+                <div class="badge bg-primary rounded-pill">
+                    {% trans "Total" %}: {{ all_posts|length }}
+                </div>
+                {% endcache %}
+            </div>
+
+            <!-- Фильтры -->
             <div class="card mb-4">
                 <div class="card-body">
                     <form action="" method="get" class="row g-3">
@@ -35,28 +91,17 @@
                         {% endfor %}
                         <div class="col-12">
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-search"></i> Найти
+                                <i class="bi bi-search"></i> {% trans "Search" %}
                             </button>
-                            <a href="?" class="btn btn-outline-secondary ms-2">Сбросить</a>
+                            <a href="?" class="btn btn-outline-secondary ms-2">{% trans "Reset filters" %}</a>
                         </div>
                     </form>
                 </div>
             </div>
-
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div class="text-muted">
-                    <i class="bi bi-calendar"></i> {% current_time '%d %B %Y (%a)' %}
-                </div>
-                {% load cache %}
-                {% cache 300 post_count_counter %}  {# Кэшируем на 5 минут (300 секунд) #}
-                <div class="badge bg-primary rounded-pill">
-                    Всего: {{ all_posts|length }}
-                </div>
-                {% endcache %}
-            </div>
         </div>
     </div>
 
+    <!-- Таблица публикаций -->
     <div class="row">
         <div class="col-12">
             {% if posts %}
@@ -65,11 +110,11 @@
                     <thead class="table-light">
                         <tr>
                             <th scope="col">#</th>
-                            <th scope="col">Название</th>
-                            <th scope="col">Тип</th>
-                            <th scope="col">Дата</th>
-                            <th scope="col">Содержание</th>
-                            <th scope="col">Действия</th>
+                            <th scope="col">{% trans "Title" %}</th>
+                            <th scope="col">{% trans "Type" %}</th>
+                            <th scope="col">{% trans "Date" %}</th>
+                            <th scope="col">{% trans "Content" %}</th>
+                            <th scope="col">{% trans "Actions" %}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -86,7 +131,11 @@
                                     {{ post.get_categoryType_display }}
                                 </span>
                             </td>
-                            <td>{{ post.dataCreation|date:"d.m.Y" }}</td>
+                            <td>
+                                {% timezone current_tz %}
+                                    {{ post.dataCreation|date:"d.m.Y H:i" }}
+                                {% endtimezone %}
+                            </td>
                             <td>{{ post.text|truncatechars:50|censor }}</td>
                             <td>
                                 <div class="btn-group" role="group">
@@ -102,7 +151,7 @@
                                     {% if perms.news.delete_post and user == post.author.authorUser or user.is_staff %}
                                     <a href="{% if post.categoryType == 'NW' %}{% url 'news_delete' post.id %}{% else %}{% url 'article_delete' post.id %}{% endif %}"
                                        class="btn btn-sm btn-outline-danger"
-                                       onclick="return confirm('Вы уверены, что хотите удалить эту публикацию?');">
+                                       onclick="return confirm('{% trans "Are you sure you want to delete this publication?" %}');">
                                         <i class="bi bi-trash"></i>
                                     </a>
                                     {% endif %}
@@ -115,13 +164,14 @@
             </div>
             {% else %}
             <div class="alert alert-info" role="alert">
-                <h4 class="alert-heading">Нет публикаций!</h4>
-                <p>По вашему запросу ничего не найдено.</p>
+                <h4 class="alert-heading">{% trans "No publications!" %}</h4>
+                <p>{% trans "Nothing found for your request." %}</p>
             </div>
             {% endif %}
         </div>
     </div>
 
+    <!-- Пагинация -->
     {% if page_obj.paginator.num_pages > 1 %}
     <div class="row mt-4">
         <div class="col-12">
@@ -129,12 +179,12 @@
                 <ul class="pagination justify-content-center">
                     {% if page_obj.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?{% url_replace page=1 %}" aria-label="First">
+                        <a class="page-link" href="?{% url_replace page=1 %}" aria-label="{% trans 'First' %}">
                             <span aria-hidden="true">&laquo;&laquo;</span>
                         </a>
                     </li>
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="{% trans 'Previous' %}">
                             <span aria-hidden="true">&laquo;</span>
                         </a>
                     </li>
@@ -150,12 +200,12 @@
 
                     {% if page_obj.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="{% trans 'Next' %}">
                             <span aria-hidden="true">&raquo;</span>
                         </a>
                     </li>
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="{% trans 'Last' %}">
                             <span aria-hidden="true">&raquo;&raquo;</span>
                         </a>
                     </li>
@@ -168,11 +218,58 @@
 </div>
 
 <style>
-    .btn-group .btn {
-        margin-left: 5px;
+    /* Автоматическая смена темы based on server time */
+    body {
+        {% timezone current_tz %}
+            {% now "H" as current_hour %}
+            {% if current_hour >= 19 or current_hour <= 7 %}
+                background-color: #2c3e50;
+                color: #ecf0f1;
+            {% else %}
+                background-color: #ffffff;
+                color: #000000;
+            {% endif %}
+        {% endtimezone %}
     }
-    .bi {
-        margin-right: 3px;
-    }
+
+    /* Стили для темной темы */
+    {% timezone current_tz %}
+        {% now "H" as current_hour %}
+        {% if current_hour >= 19 or current_hour <= 7 %}
+            .table {
+                color: #ecf0f1;
+            }
+            .table-hover tbody tr:hover {
+                color: #ecf0f1;
+                background-color: rgba(255, 255, 255, 0.075);
+            }
+            .card {
+                background-color: #34495e;
+                color: #ecf0f1;
+                border-color: #2c3e50;
+            }
+            .form-control, .form-select {
+                background-color: #2c3e50;
+                color: #ecf0f1;
+                border-color: #34495e;
+            }
+            .form-control:focus, .form-select:focus {
+                background-color: #2c3e50;
+                color: #ecf0f1;
+                border-color: #3498db;
+                box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+            }
+            .alert-info {
+                background-color: #1c2833;
+                border-color: #1c2833;
+                color: #ecf0f1;
+            }
+            .text-muted {
+                color: #bdc3c7 !important;
+            }
+        {% endif %}
+    {% endtimezone %}
 </style>
+
+{% endwith %}
 {% endblock content %}
